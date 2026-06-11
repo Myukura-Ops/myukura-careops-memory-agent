@@ -1,0 +1,18 @@
+steps:
+  - name: "gcr.io/cloud-builders/docker"
+    args:
+      [
+        "build",
+        "--build-arg",
+        "VITE_API_BASE_URL=${_VITE_API_BASE_URL}",
+        "-t",
+        "${_IMAGE}",
+        "."
+      ]
+
+images:
+  - "${_IMAGE}"
+
+substitutions:
+  _VITE_API_BASE_URL: "https://myukura-careops-api-1001238764138.europe-west1.run.app"
+  _IMAGE: "europe-west1-docker.pkg.dev/myukura-careops-demo/myukura-careops-repo/myukura-careops-web:smoke-web-v11"

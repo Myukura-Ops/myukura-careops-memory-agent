@@ -1,0 +1,161 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  annotations:
+    run.googleapis.com/client-name: gcloud
+    run.googleapis.com/client-version: 571.0.0
+    run.googleapis.com/ingress: all
+    run.googleapis.com/ingress-status: all
+    run.googleapis.com/maxScale: '20'
+    run.googleapis.com/operation-id: 896aaf12-7af4-42c8-85ef-462e42ade744
+    run.googleapis.com/urls: '["https://myukura-careops-api-1001238764138.europe-west1.run.app","https://myukura-careops-api-mgjalmx5aq-ew.a.run.app"]'
+    serving.knative.dev/creator: team@flowsystem.tech
+    serving.knative.dev/lastModifier: team@flowsystem.tech
+  creationTimestamp: '2026-06-07T23:19:08.706557Z'
+  generation: 25
+  labels:
+    cloud.googleapis.com/location: europe-west1
+  name: myukura-careops-api
+  namespace: '1001238764138'
+  resourceVersion: AAZT93l8ioQ
+  selfLink: /apis/serving.knative.dev/v1/namespaces/1001238764138/services/myukura-careops-api
+  uid: 7084664c-233a-4adb-ae20-8b75797ba789
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/maxScale: '5'
+        run.googleapis.com/client-name: gcloud
+        run.googleapis.com/client-version: 571.0.0
+        run.googleapis.com/startup-cpu-boost: 'true'
+        run.googleapis.com/vpc-access-connector: careops-vpc
+        run.googleapis.com/vpc-access-egress: all-traffic
+      labels:
+        client.knative.dev/nonce: dbfbvsmlxm
+        run.googleapis.com/startupProbeType: Default
+    spec:
+      containerConcurrency: 40
+      containers:
+      - env:
+        - name: APP_ENV
+          value: demo
+        - name: RUNTIME
+          value: cloud_run
+        - name: DEMO_MODE
+          value: 'true'
+        - name: STATE_BACKEND
+          value: mongodb
+        - name: GEMINI_ENABLED
+          value: 'true'
+        - name: OBSERVABILITY_ENABLED
+          value: 'false'
+        - name: DYNATRACE_ENABLED
+          value: 'false'
+        - name: DEMO_SYNTHETIC_DATA_ONLY
+          value: 'true'
+        - name: ALLOW_REAL_PATIENT_DATA
+          value: 'false'
+        - name: LOG_SOURCE_NOTE_CONTENT
+          value: 'false'
+        - name: TRACE_SOURCE_NOTE_CONTENT
+          value: 'false'
+        - name: MONGODB_DATABASE
+          value: myukura_careops_demo
+        - name: MONGODB_CONNECT_TIMEOUT_MS
+          value: '5000'
+        - name: MONGODB_APP_NAME
+          value: myukura-careops-memory-agent
+        - name: MONGODB_URI
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: MYUKURA_MONGODB_URI
+        - name: CORS_ALLOWED_ORIGINS
+          value: https://myukura-careops-web-1001238764138.europe-west1.run.app,http://localhost:5173,http://localhost:3000
+        - name: GEMINI_PRIMARY_MODEL
+          value: gemini-3.5-flash
+        - name: GEMINI_FALLBACK_MODELS
+          value: gemini-3.1-flash-lite,gemini-2.5-flash-lite,gemini-2.5-flash
+        - name: GEMINI_MAX_MODEL_ATTEMPTS
+          value: '3'
+        - name: GEMINI_REQUEST_TIMEOUT_SECONDS
+          value: '20'
+        - name: GEMINI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: GEMINI_API_KEY
+        - name: PARTNER_OUTBOX_ENABLED
+          value: 'true'
+        - name: ARIZE_EXPORT_ENABLED
+          value: 'false'
+        - name: ARIZE_MCP_ENABLED
+          value: 'false'
+        - name: ELASTIC_EXPORT_ENABLED
+          value: 'false'
+        - name: ELASTIC_MCP_ENABLED
+          value: 'false'
+        - name: PARTNER_MAX_ATTEMPTS
+          value: '3'
+        - name: PARTNER_EXPORT_TIMEOUT_SECONDS
+          value: '10'
+        - name: DEMO_ACCESS_REQUIRED
+          value: 'true'
+        - name: DEMO_ACCESS_CODE
+          valueFrom:
+            secretKeyRef:
+              key: '1'
+              name: DEMO_ACCESS_CODE
+        image: europe-west1-docker.pkg.dev/myukura-careops-demo/myukura-careops-repo/myukura-careops-api:smoke-v14
+        ports:
+        - containerPort: 8080
+          name: http1
+        resources:
+          limits:
+            cpu: '1'
+            memory: 1Gi
+        startupProbe:
+          failureThreshold: 1
+          periodSeconds: 240
+          tcpSocket:
+            port: 8080
+          timeoutSeconds: 240
+      serviceAccountName: 1001238764138-compute@developer.gserviceaccount.com
+      timeoutSeconds: 60
+  traffic:
+  - latestRevision: true
+    percent: 100
+status:
+  address:
+    url: https://myukura-careops-api-mgjalmx5aq-ew.a.run.app
+  conditions:
+  - lastTransitionTime: '2026-06-11T10:03:40.418079Z'
+    message: "Revision 'myukura-careops-api-00025-7sk' is not ready and cannot serve\
+      \ traffic. spec.template.spec.containers[0].env[29].value_from.secret_key_ref.name:\
+      \ Secret projects/1001238764138/secrets/DEMO_ACCESS_CODE/versions/1 was not\
+      \ found"
+    reason: SecretsAccessCheckFailed
+    status: 'False'
+    type: Ready
+  - lastTransitionTime: '2026-06-11T10:03:40.383488Z'
+    message: 'spec.template.spec.containers[0].env[29].value_from.secret_key_ref.name:
+      Secret projects/1001238764138/secrets/DEMO_ACCESS_CODE/versions/1 was not found'
+    reason: SecretsAccessCheckFailed
+    status: 'False'
+    type: ConfigurationsReady
+  - lastTransitionTime: '2026-06-11T10:03:40.418079Z'
+    message: "Revision 'myukura-careops-api-00025-7sk' is not ready and cannot serve\
+      \ traffic. spec.template.spec.containers[0].env[29].value_from.secret_key_ref.name:\
+      \ Secret projects/1001238764138/secrets/DEMO_ACCESS_CODE/versions/1 was not\
+      \ found"
+    reason: SecretsAccessCheckFailed
+    status: 'False'
+    type: RoutesReady
+  latestCreatedRevisionName: myukura-careops-api-00025-7sk
+  latestReadyRevisionName: myukura-careops-api-00017-cft
+  observedGeneration: 25
+  traffic:
+  - latestRevision: true
+    percent: 100
+    revisionName: myukura-careops-api-00017-cft
+  url: https://myukura-careops-api-mgjalmx5aq-ew.a.run.app
