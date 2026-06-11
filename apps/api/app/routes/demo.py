@@ -1,11 +1,12 @@
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
-from app.repositories import mongodb_seed, mongodb_activity
+from app.repositories import mongodb_seed, mongodb_activity, mongodb_demo_quotas
 
 router = APIRouter(tags=["demo"])
 
 @router.post("/demo/seed")
 async def seed_data():
+    await mongodb_demo_quotas.check_seed_quota()
     try:
         res = await mongodb_seed.seed_demo_data()
         return res
@@ -18,6 +19,7 @@ async def get_activity():
 
 @router.post("/demo/partner-outbox/process-once")
 async def process_partner_outbox():
+    await mongodb_demo_quotas.check_partner_worker_quota()
     from app.services.partner_export_worker import process_partner_outbox_once
     try:
         summary = await process_partner_outbox_once(limit=20)

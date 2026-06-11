@@ -31,8 +31,11 @@ async def get_task(task_id: str):
         return JSONResponse(status_code=404, content=err.model_dump())
     return task
 
+from app.repositories import mongodb_demo_quotas
+
 @router.patch("/{task_id}/status", response_model=CareOpsTask)
 async def update_task_status(task_id: str, request: TaskStatusUpdateRequest):
+    await mongodb_demo_quotas.check_task_mutation_quota()
     repo = get_tasks_repo()
     try:
         updated = await repo.update_task_status(task_id, request.status, changed_by="prof_demo", reason="UI Update")

@@ -12,11 +12,12 @@ from app.models.agent_run import (
 from app.models.notes import SourceNote
 from app.repositories.repository_factory import get_agent_runs_repo, get_source_notes_repo, get_mcp_tool_calls_repo
 from app.services import task_queue
+from app.repositories import mongodb_demo_quotas
 
 router = APIRouter(prefix="/agent-runs", tags=["agent-runs"])
 
-@router.post("/", response_model=AgentRunResponse)
-async def create_agent_run(request: AgentRunCreateRequest, background_tasks: BackgroundTasks):
+@router.post("/", response_model=AgentRunDetail)
+async def process_agent_run(request: AgentRunCreateRequest, background_tasks: BackgroundTasks):
 
     if len(request.source_note) > settings.max_source_note_chars:
         error_resp = StructuredErrorResponse(
@@ -27,6 +28,11 @@ async def create_agent_run(request: AgentRunCreateRequest, background_tasks: Bac
         )
         return JSONResponse(status_code=413, content=error_resp.model_dump())
         
+    # Check quotas
+    await mongodb_demo_quotas.check_run_quota()
+    if request.mode == "gemini":
+        await mongodb_demo_quotas.check_gemini_quota()
+
     run_id = str(uuid.uuid4())
     note_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc)

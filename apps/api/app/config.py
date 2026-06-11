@@ -63,6 +63,14 @@ class Settings(BaseSettings):
     partner_outbox_enabled: bool = True
     partner_max_attempts: int = 3
     partner_export_timeout_seconds: int = 10
+
+    # Demo Quota Guard
+    demo_quota_enabled: bool = True
+    max_demo_runs_per_day: int = 50
+    max_demo_gemini_runs_per_day: int = 25
+    max_demo_partner_worker_calls_per_day: int = 20
+    max_demo_seed_calls_per_day: int = 5
+    max_demo_task_mutations_per_day: int = 100
     
     arize_export_enabled: bool = False
     arize_mcp_enabled: bool = False

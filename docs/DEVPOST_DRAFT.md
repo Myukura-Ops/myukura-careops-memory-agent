@@ -1,3 +1,9 @@
+> **🛑 FOR JUDGES: DEMO ACCESS CODE**
+> To test the live application at the provided URL, please find the demo access code located at the very top of our public GitHub repository's README file.
+>
+> *Note: To protect against abuse, this public demo is capped at a small number of AI runs per day. If the judging quota is reached, please contact the team through Devpost and we will refresh it.*
+
+
 # Devpost Draft: MyuKura CareOps Memory Agent
 
 ## 1. Project Title
@@ -57,6 +63,11 @@ The Outbox data models for Arize and Elastic are fully operational in MongoDB; n
 Our live demo is publicly accessible but protected by an access gate.
 URL: `https://myukura-careops-web-1001238764138.europe-west1.run.app/`
 *Reviewers: Please refer to your submission materials or contact us for the secure `DEMO_ACCESS_CODE`.*
+
+> **🛑 FOR JUDGES: DEMO ACCESS CODE**
+> To test the live application at the provided URL, please find the demo access code located at the very top of our public GitHub repository's README file.
+> 
+> *Note: To protect against abuse, this public demo is capped at a small number of AI runs per day. If the judging quota is reached, please contact the team through Devpost and we will refresh it.*
 
 ## 16. Security/Privacy Note
 The public web shell is reachable, but costly and mutating API actions are protected by a backend-enforced demo access code. 
