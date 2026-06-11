@@ -110,7 +110,7 @@ Or via the UI: click **"Seed Demo Data"** in the top-right corner.
 | `MONGODB_URI` | If `mongodb` | MongoDB Atlas connection string |
 | `GEMINI_ENABLED` | No | `true` to enable Gemini AI extraction |
 | `GEMINI_API_KEY` | If Gemini | Google AI Studio API key |
-| `GEMINI_PRIMARY_MODEL` | If Gemini | e.g. `gemini-2.5-flash` |
+| `GEMINI_PRIMARY_MODEL` | If Gemini | e.g. `gemini-3.5-flash` |
 | `GEMINI_FALLBACK_MODELS` | If Gemini | e.g. `gemini-3.1-flash-lite,gemini-2.0-flash` |
 | `GEMINI_MAX_MODEL_ATTEMPTS` | Number | e.g. `3` |
 
@@ -128,7 +128,7 @@ See [`.env.example`](.env.example) for the full list.
 
 * Extraction of operational "CareOps" tasks from unstructured text and voice notes.
 * **Live persistent operational memory** powered by MongoDB Atlas, read through the **official MongoDB MCP Server** (read-only) on every run.
-* Resilient Gemini model chain (gemini-2.5-flash primary with automatic fallbacks, every attempt visible in the UI) plus a deterministic keyword-matching extractor as fallback.
+* Resilient Gemini model chain (gemini-3.5-flash primary with automatic fallbacks, every attempt visible in the UI) plus a deterministic keyword-matching extractor as fallback.
 * Evidence Layer with system and trace transparency.
 
 ## Safety Boundaries

@@ -27,7 +27,7 @@ To activate the real Gemini extraction locally, you must provide:
 ```env
 GEMINI_ENABLED=true
 GEMINI_API_KEY="your_real_key_here"
-GEMINI_PRIMARY_MODEL="gemini-2.5-flash"
+GEMINI_PRIMARY_MODEL="gemini-3.5-flash"
 GEMINI_FALLBACK_MODELS="gemini-3.1-flash-lite,gemini-2.0-flash"
 GEMINI_MAX_MODEL_ATTEMPTS="3"
 ```
@@ -35,9 +35,9 @@ GEMINI_MAX_MODEL_ATTEMPTS="3"
 ## Model Strategy
 
 The agent is designed to be highly resilient:
-* **Primary:** Gemini 2.5 Flash (`gemini-2.5-flash`) if available.
+* **Primary:** Gemini 2.5 Flash (`gemini-3.5-flash`) if available.
 * **Fallbacks:** The orchestrator will automatically fallback to smaller or alternative models if the primary model throws an error.
-* **Fallback 2:** Gemini 2.5 Flash (`gemini-2.5-flash`) if available.
+* **Fallback 2:** Gemini 2.5 Flash (`gemini-3.5-flash`) if available.
 
 *Note: Exact model IDs must be verified against the current Google AI Studio / Vertex availability before running.*
 

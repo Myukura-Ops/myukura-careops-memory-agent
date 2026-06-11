@@ -115,7 +115,7 @@ def validate_gemini_extraction(result: GeminiSafeExtractionResult) -> GeminiSafe
         try:
             client = genai.Client(api_key=api_key)
             # Use a fast, cheap model for the safety check
-            safety_model = "gemini-2.5-flash"
+            safety_model = "gemini-3.5-flash"
         except Exception as e:
             logger.error(f"Failed to initialize safety client: {e}")
             client = None

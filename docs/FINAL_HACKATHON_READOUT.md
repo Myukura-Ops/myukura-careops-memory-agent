@@ -13,7 +13,7 @@ Gemini securely extracts operational signals from post-visit notes; a backend sa
 - **Frontend:** React Web App + Vite + Tailwind CSS
 - **Backend:** FastAPI + Python
 - **Infrastructure:** Google Cloud Run (API/Web), Cloud Build, Artifact Registry
-- **AI Core:** Gemini API (gemini-2.5-flash) with Model Fallback Chain
+- **AI Core:** Gemini API (gemini-3.5-flash) with Model Fallback Chain
 - **Security:** Secret Manager, Mock Fallback Mechanism
 - **Persistence:** MongoDB Atlas with repository pattern
 - **Partner Integrations:**
