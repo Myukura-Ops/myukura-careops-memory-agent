@@ -26,7 +26,6 @@ FROM python:3.11-slim
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && rm -rf /var/lib/apt/lists/*
 COPY --from=builder /usr/bin/node /usr/bin/node
 COPY --from=builder /usr/lib/node_modules /usr/lib/node_modules
-COPY --from=builder /usr/local/lib/node_modules /usr/local/lib/node_modules
 RUN ln -sf /usr/lib/node_modules/npm/bin/npm-cli.js /usr/bin/npm \
     && ln -sf /usr/bin/node /usr/bin/nodejs \
     && ln -sf /usr/lib/node_modules/mongodb-mcp-server/dist/index.js /usr/local/bin/mongodb-mcp-server
