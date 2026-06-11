@@ -15,6 +15,8 @@ The MyuKura CareOps Memory Agent acts as a secure, automated administrative assi
 ## 5. How we built it
 We built a decoupled architecture on Google Cloud. The frontend is a React application served via Cloud Run. The backend is a FastAPI Python service, also deployed on Cloud Run, which orchestrates the AI logic. We integrated Google Secret Manager to securely handle API keys and access codes. AI processing uses Google's `google-genai` SDK with a resilient model chain (gemini-3.5-flash primary, automatic fallbacks, every attempt surfaced in the UI). Operational memory reads run through the official MongoDB MCP Server, spawned over stdio in read-only mode inside the API container, with an audited fallback to our controlled native adapter.
 
+**A deliberate architecture decision:** we did not orchestrate the agent through a high-level agent framework. In a healthcare context, autonomous black-box agent loops were unacceptable to us. We built a deterministic orchestrator directly on the Gemini SDK so that **every single model output must pass through our dual-layer safety validator and be written to the audit trail before any task can even be proposed**. Maximum clinical-safety control was worth more to us than framework convenience — and it is the reason we can show a complete, replayable audit timeline for every run.
+
 ## 6. Partner Technologies Used
 *   **Google Cloud:** Cloud Run, Cloud Build, Artifact Registry, Secret Manager, Gemini API
 *   **MongoDB (our partner track):** Official MongoDB MCP Server (read-only memory reads) + MongoDB Atlas as live persistent operational memory, task storage and audit trail

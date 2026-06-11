@@ -84,7 +84,7 @@ Everything is deployed on Google Cloud — Cloud Run, Cloud Build, Secret Manage
 
 22
 00:02:33,000 --> 00:02:41,000
-The agent plans multi-step operational work, but a human always has the final word.
+We built the orchestration directly on the Gemini SDK: deterministic, auditable, with our own safety validator in front of every output — and a human always has the final word.
 
 23
 00:02:41,000 --> 00:02:50,000
