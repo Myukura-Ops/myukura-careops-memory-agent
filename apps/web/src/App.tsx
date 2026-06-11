@@ -59,7 +59,7 @@ const DEMO_SCENARIOS = [
 ];
 
 export default function App() {
-  const [sourceNote, setSourceNote] = useState(DEMO_SCENARIOS[0].text);
+  const [sourceNote, setSourceNote] = useState(DEMO_SCENARIOS[0]?.text || '');
   const [mode, setMode] = useState<string>('mock');
   const [runId, setRunId] = useState<string | null>(null);
   const [runStatus, setRunStatus] = useState<string>('idle');
@@ -212,6 +212,28 @@ export default function App() {
       alert("Synthetic demo data seeded in MongoDB!");
     } catch (e) {
       alert("Seed failed. Is API running?");
+    }
+  };
+
+  const handleProcessOutbox = async () => {
+    try {
+      const res = await authFetch(`${API_URL}/demo/partner-outbox/process-once`, { method: 'POST' });
+      if (res.ok) {
+        const summary = await res.json();
+        alert(`Outbox processed: ${summary.processed} items (${summary.sent} sent, ${summary.skipped} skipped, ${summary.failed} failed)`);
+        // Refresh run result
+        if (runId) {
+          const runRes = await authFetch(`${API_URL}/agent-runs/${runId}`);
+          if (runRes.ok) {
+            const runData = await runRes.json();
+            setRunResult(runData.result);
+          }
+        }
+      } else {
+        alert("Failed to process outbox.");
+      }
+    } catch (e) {
+      alert("Failed to connect to API.");
     }
   };
 
@@ -480,9 +502,19 @@ export default function App() {
 
         {/* Partner Integrations */}
         <div className="lg:col-span-4 bg-white rounded-lg shadow border border-gray-200 p-4">
-          <h2 className="text-lg font-semibold text-gray-800 mb-1">Partner Integrations</h2>
-          <p className="text-sm text-gray-600 mb-4">MongoDB is live. Arize and Elastic are prepared through a safe outbox layer; external exports remain disabled unless explicitly configured.</p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="flex justify-between items-center mb-2">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-800">Partner Integrations</h2>
+              <p className="text-sm text-gray-600">MongoDB is live. Arize and Elastic are prepared through a safe outbox layer; external exports remain disabled unless explicitly configured.</p>
+            </div>
+            <button
+              onClick={handleProcessOutbox}
+              className="text-xs bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-1.5 px-3 rounded shadow transition-colors flex items-center gap-1"
+            >
+              <Activity size={12}/> Trigger Outbox Worker
+            </button>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-3">
             
             {/* MongoDB Atlas */}
             <div className="border border-green-200 bg-green-50 rounded p-3 flex flex-col">
@@ -497,24 +529,44 @@ export default function App() {
             {/* Arize */}
             {(() => {
               const arizeStatus = runResult?.partner_integrations?.arize?.status || "missing";
-              const isReady = arizeStatus === "outbox_ready";
-              const isFailed = arizeStatus === "outbox_failed";
+              const isReady = arizeStatus === "outbox_ready" || arizeStatus === "pending";
+              const isSent = arizeStatus === "outbox_sent" || arizeStatus === "sent";
+              const isSkipped = arizeStatus === "outbox_skipped" || arizeStatus === "skipped";
+              const isFailed = arizeStatus === "outbox_failed" || arizeStatus === "failed";
               
-              const statusText = isReady ? "Outbox ready" : isFailed ? "Outbox failed safely" : "Not available for this run";
-              const statusColors = isReady ? "bg-indigo-100 text-indigo-800 border-indigo-200" : isFailed ? "bg-red-100 text-red-800 border-red-200" : "bg-gray-100 text-gray-600 border-gray-200";
-              const bgClass = isReady ? "bg-indigo-50 border-indigo-100" : isFailed ? "bg-red-50 border-red-100" : "bg-gray-50 border-gray-100";
+              let statusText = "Not available for this run";
+              let statusColors = "bg-gray-100 text-gray-600 border-gray-200";
+              let bgClass = "bg-gray-50 border-gray-100";
+              
+              if (isReady) {
+                statusText = "Outbox pending";
+                statusColors = "bg-yellow-100 text-yellow-800 border-yellow-200";
+                bgClass = "bg-yellow-50/50 border-yellow-100";
+              } else if (isSent) {
+                statusText = "Exported Successfully";
+                statusColors = "bg-green-100 text-green-800 border-green-200";
+                bgClass = "bg-green-50/50 border-green-100";
+              } else if (isSkipped) {
+                statusText = "Skipped (Export Disabled)";
+                statusColors = "bg-indigo-100 text-indigo-800 border-indigo-200";
+                bgClass = "bg-indigo-50 border-indigo-100";
+              } else if (isFailed) {
+                statusText = "Outbox failed safely";
+                statusColors = "bg-red-100 text-red-800 border-red-200";
+                bgClass = "bg-red-50 border-red-100";
+              }
               
               return (
                 <div className={`border rounded p-3 flex flex-col ${bgClass}`}>
                   <div className="flex justify-between items-start mb-2">
-                    <strong className={`text-sm ${isReady ? 'text-indigo-900' : isFailed ? 'text-red-900' : 'text-gray-700'}`}>Arize</strong>
+                    <strong className={`text-sm ${isReady ? 'text-yellow-900' : isSent ? 'text-green-900' : isSkipped ? 'text-indigo-900' : isFailed ? 'text-red-900' : 'text-gray-700'}`}>Arize</strong>
                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${statusColors}`}>{statusText}</span>
                   </div>
-                  <p className={`text-[11px] flex-grow ${isReady ? 'text-indigo-800' : isFailed ? 'text-red-800' : 'text-gray-500'}`}>
+                  <p className={`text-[11px] flex-grow ${isReady ? 'text-yellow-800' : isSent ? 'text-green-800' : isSkipped ? 'text-indigo-800' : isFailed ? 'text-red-800' : 'text-gray-500'}`}>
                     AI observability/evaluation payload for Gemini model usage, fallback chain, safety status, memory usage, and prompt-injection detection.
                   </p>
-                  <div className={`mt-2 pt-2 border-t text-[10px] font-semibold ${isReady ? 'border-indigo-200 text-indigo-700' : isFailed ? 'border-red-200 text-red-700' : 'border-gray-200 text-gray-500'}`}>
-                    External export: Disabled
+                  <div className={`mt-2 pt-2 border-t text-[10px] font-semibold ${isReady ? 'border-yellow-200 text-yellow-700' : isSent ? 'border-green-200 text-green-700' : isSkipped ? 'border-indigo-200 text-indigo-700' : isFailed ? 'border-red-200 text-red-700' : 'border-gray-200 text-gray-500'}`}>
+                    External export: {runResult?.partner_integrations?.arize?.external_export_enabled ? "Enabled" : "Disabled"}
                   </div>
                 </div>
               );
@@ -523,24 +575,44 @@ export default function App() {
             {/* Elastic */}
             {(() => {
               const elasticStatus = runResult?.partner_integrations?.elastic?.status || "missing";
-              const isReady = elasticStatus === "outbox_ready";
-              const isFailed = elasticStatus === "outbox_failed";
+              const isReady = elasticStatus === "outbox_ready" || elasticStatus === "pending";
+              const isSent = elasticStatus === "outbox_sent" || elasticStatus === "sent";
+              const isSkipped = elasticStatus === "outbox_skipped" || elasticStatus === "skipped";
+              const isFailed = elasticStatus === "outbox_failed" || elasticStatus === "failed";
               
-              const statusText = isReady ? "Outbox ready" : isFailed ? "Outbox failed safely" : "Not available for this run";
-              const statusColors = isReady ? "bg-blue-100 text-blue-800 border-blue-200" : isFailed ? "bg-red-100 text-red-800 border-red-200" : "bg-gray-100 text-gray-600 border-gray-200";
-              const bgClass = isReady ? "bg-blue-50 border-blue-100" : isFailed ? "bg-red-50 border-red-100" : "bg-gray-50 border-gray-100";
+              let statusText = "Not available for this run";
+              let statusColors = "bg-gray-100 text-gray-600 border-gray-200";
+              let bgClass = "bg-gray-50 border-gray-100";
+              
+              if (isReady) {
+                statusText = "Outbox pending";
+                statusColors = "bg-yellow-100 text-yellow-800 border-yellow-200";
+                bgClass = "bg-yellow-50/50 border-yellow-100";
+              } else if (isSent) {
+                statusText = "Indexed (Audit Logged)";
+                statusColors = "bg-green-100 text-green-800 border-green-200";
+                bgClass = "bg-green-50/50 border-green-100";
+              } else if (isSkipped) {
+                statusText = "Skipped (Indexing Disabled)";
+                statusColors = "bg-indigo-100 text-indigo-800 border-indigo-200";
+                bgClass = "bg-indigo-50 border-indigo-100";
+              } else if (isFailed) {
+                statusText = "Outbox failed safely";
+                statusColors = "bg-red-100 text-red-800 border-red-200";
+                bgClass = "bg-red-50 border-red-100";
+              }
               
               return (
                 <div className={`border rounded p-3 flex flex-col ${bgClass}`}>
                   <div className="flex justify-between items-start mb-2">
-                    <strong className={`text-sm ${isReady ? 'text-blue-900' : isFailed ? 'text-red-900' : 'text-gray-700'}`}>Elastic</strong>
+                    <strong className={`text-sm ${isReady ? 'text-yellow-900' : isSent ? 'text-green-900' : isSkipped ? 'text-indigo-900' : isFailed ? 'text-red-900' : 'text-gray-700'}`}>Elastic</strong>
                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${statusColors}`}>{statusText}</span>
                   </div>
-                  <p className={`text-[11px] flex-grow ${isReady ? 'text-blue-800' : isFailed ? 'text-red-800' : 'text-gray-500'}`}>
+                  <p className={`text-[11px] flex-grow ${isReady ? 'text-yellow-800' : isSent ? 'text-green-800' : isSkipped ? 'text-indigo-800' : isFailed ? 'text-red-800' : 'text-gray-500'}`}>
                     Search-ready audit payload for runs, tasks, safety flags, memory context, and operational events.
                   </p>
-                  <div className={`mt-2 pt-2 border-t text-[10px] font-semibold ${isReady ? 'border-blue-200 text-blue-700' : isFailed ? 'border-red-200 text-red-700' : 'border-gray-200 text-gray-500'}`}>
-                    External indexing: Disabled
+                  <div className={`mt-2 pt-2 border-t text-[10px] font-semibold ${isReady ? 'border-yellow-200 text-yellow-700' : isSent ? 'border-green-200 text-green-700' : isSkipped ? 'border-indigo-200 text-indigo-700' : isFailed ? 'border-red-200 text-red-700' : 'border-gray-200 text-gray-500'}`}>
+                    External indexing: {runResult?.partner_integrations?.elastic?.external_export_enabled ? "Enabled" : "Disabled"}
                   </div>
                 </div>
               );
@@ -936,7 +1008,7 @@ export default function App() {
                       <div className="space-y-3">
                         {tasks.filter(t => t.agent_run_id === runId).map(task => {
                           const descParts = task.description.split("Source evidence: ");
-                          const mainDesc = descParts[0];
+                          const mainDesc = descParts[0] || "";
                           const evidence = descParts[1] ? descParts[1].replace(/^'|'$/g, '') : null;
                           return (
                           <div key={task.task_id} className="border-2 border-blue-200 rounded p-3 bg-white hover:border-blue-300 transition-colors shadow-sm">
@@ -1006,7 +1078,7 @@ export default function App() {
                         <div className="space-y-3 opacity-60 hover:opacity-100 transition-opacity">
                           {limitedTasks.map(task => {
                             const descParts = task.description.split("Source evidence: ");
-                            const mainDesc = descParts[0];
+                            const mainDesc = descParts[0] || "";
                             const evidence = descParts[1] ? descParts[1].replace(/^'|'$/g, '') : null;
                             return (
                             <div key={task.task_id} className="border border-gray-200 rounded p-3 bg-gray-50">

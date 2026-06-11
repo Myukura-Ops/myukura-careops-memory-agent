@@ -19,7 +19,7 @@ class AgentRunCreateRequest(BaseModel):
     patient_id: str
     professional_id: str
     source_note: str
-    mode: str = "mock"
+    mode: str = "deterministic"
 
 class AgentRunResponse(BaseModel):
     run_id: str

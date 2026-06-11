@@ -93,15 +93,18 @@ class MCPToolAdapter:
         )
 
     async def call_search_patient_memory(self, patient_id: str) -> Dict[str, Any]:
+        """Look up operational memory for a patient from the database."""
         start = time.time()
         tool_call_id = await self._start_tool("search_patient_memory", {"patient_id": patient_id})
         try:
-            # Mocking fetch
+            tasks_repo = get_tasks_repo()
+            patient_tasks = await tasks_repo.get_tasks_by_patient(patient_id)
+            open_tasks = [t for t in patient_tasks if t.status.value not in ("done", "rejected")]
             output = {
                 "patient_id": patient_id,
-                "open_tasks_count": 0,
-                "recent_task_titles": [],
-                "operational_context": {"last_visit": "2026-05-10", "flags": ["needs_follow_up"]}
+                "open_tasks_count": len(open_tasks),
+                "recent_task_titles": [t.title for t in open_tasks[:5]],
+                "total_tasks_found": len(patient_tasks),
             }
             latency_ms = int((time.time() - start) * 1000)
             await self._succeed_tool(tool_call_id, "search_patient_memory", output, ["patients_demo", "careops_tasks"], [], latency_ms)
@@ -114,15 +117,28 @@ class MCPToolAdapter:
             raise e
 
     async def call_get_professional_preferences(self, professional_id: str) -> Dict[str, Any]:
+        """Retrieve professional preferences from the database."""
         start = time.time()
         tool_call_id = await self._start_tool("get_professional_preferences", {"professional_id": professional_id})
         try:
-            output = {
-                "professional_id": professional_id,
-                "handoff_style": "brief",
-                "task_priority_rules": {"preferred_priority": "medium"},
-                "review_mode": "human_approval_required"
-            }
+            # Read from MongoDB if available; fall back to safe defaults
+            from app.repositories import mongodb_client
+            prefs = None
+            if mongodb_client.db is not None:
+                prefs = await mongodb_client.db["professional_preferences"].find_one(
+                    {"professional_id": professional_id}
+                )
+            if prefs:
+                prefs.pop("_id", None)
+                output = prefs
+            else:
+                output = {
+                    "professional_id": professional_id,
+                    "handoff_style": "brief",
+                    "task_priority_rules": {"preferred_priority": "medium"},
+                    "review_mode": "human_approval_required",
+                    "source": "default",
+                }
             latency_ms = int((time.time() - start) * 1000)
             await self._succeed_tool(tool_call_id, "get_professional_preferences", output, ["professional_preferences"], [], latency_ms)
             observability.trace_mcp_tool_call(self.run_id, "get_professional_preferences", "success", latency_ms)
@@ -179,7 +195,7 @@ class MCPToolAdapter:
                 status=TaskStatus.proposed,
                 requires_human_approval=True,
                 risk_level="low",
-                created_by="mock_careops_agent",
+                created_by="careops_agent",
                 created_at=now,
                 updated_at=now
             )

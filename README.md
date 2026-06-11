@@ -13,97 +13,135 @@ A supervised operational memory agent for clinical teams that converts approved 
 > - All agent outputs require **human approval** (human-in-the-loop).
 > - Simulated delivery only.
 
-## Roadmap & Future Phases
-- **Phase 1-4D**: Completed (Local FastAPI, React, MongoDB, Gemini Orchestrator, Safety Verifier, MCP Adapter, Observability Hooks).
-- **Phase 5**: Completed (Cloud Run deployment, official MongoDB MCP Server integration for memory reads, partner export workers, Devpost packaging).
-- **Future**: Dedicated Worker service, Cloud Tasks, EHR/FHIR integration path.
+## Architecture
 
-## Target Architecture
 - **Frontend**: React + Vite + TypeScript
-- **API**: FastAPI (Currently runs in background simulation locally)
-- **Worker**: FastAPI (Stubbed for future Cloud Tasks integration)
-- **State/Memory**: MongoDB Atlas (`agent_runs`, `careops_tasks`, `mcp_tool_calls`, etc. - our core operational layer)
+- **API**: FastAPI on Cloud Run (background task queue for async agent runs)
+- **Worker**: FastAPI stub (prepared for future Cloud Tasks integration)
+- **State/Memory**: MongoDB Atlas (`agent_runs`, `careops_tasks`, `mcp_tool_calls`, etc.)
 - **Agent**: Gemini Model Chain with Structured Extraction and Fallbacks
-- **Tools**: Official MongoDB MCP Server (read-only, operational memory reads) + Controlled MongoDB Tool Adapter layer (scoped writes, MCP-style contracts, full per-call audit logging)
-- **Observability**: Optional Arize Phoenix hooks & Dynatrace target integration (Safe, no PHI logged)
+- **Tools**: Official MongoDB MCP Server (read-only, operational memory reads) + Controlled MongoDB Tool Adapter layer (scoped writes, per-call audit logging)
+- **Observability**: Optional Arize Phoenix hooks & Dynatrace target integration (safe, no PHI logged)
 
 ## Sensitive Data Guardrails
-This project employs a sensitive-data-ready architecture:
-- **Synthetic Demo Only**: The system strictly uses synthetic demographic and clinical data. It is not connected to any real EHR or patient databases.
-- **Secure Storage**: MongoDB Atlas accesses are strictly scoped, and all production credentials will be managed via Google Cloud Secret Manager.
-- **Redacted Telemetry**: Application logs and observability traces (Dynatrace/Arize) are redacted to exclude full clinical note text and any potential PHI/PII.
-- **Future Hardening**: We have documented a roadmap integration path for Google Cloud Sensitive Data Protection (DLP) for automated pre-persistence inspection.
-- **Disclaimer**: This demo makes no compliance claims and is not certified for HIPAA/GDPR compliance. It demonstrates a safety-oriented baseline architecture.
 
-*Note on MCP: operational memory reads run through the **official MongoDB MCP Server** (`mongodb-mcp-server`, spawned over stdio, always with `--readOnly`) when `MONGODB_MCP_ENABLED=true`. If the MCP server is unavailable, the agent falls back to the controlled native adapter and records the fallback in the audit trail. Writes never go through MCP: they stay in the controlled tool adapter, which enforces strict clinical-safety scoping and logs every call in the `mcp_tool_calls` collection. Background notes in `docs/OFFICIAL_MONGODB_MCP_READONLY_NOTES.md`.*
+- **Synthetic Demo Only**: Strictly synthetic demographic and clinical data. Not connected to any real EHR.
+- **Secure Storage**: MongoDB Atlas credentials managed via Google Cloud Secret Manager.
+- **Redacted Telemetry**: Application logs and traces are redacted to exclude clinical note text and any potential PHI/PII.
+- **Future Hardening**: Documented roadmap for Google Cloud Sensitive Data Protection (DLP) integration.
+- **Disclaimer**: This demo makes no compliance claims (HIPAA/GDPR). It demonstrates a safety-oriented baseline architecture.
 
-## API Endpoints (Phase 2A)
-- `POST /demo/seed`: Idempotently seeds synthetic demographic records.
-- `GET /mongodb/activity`: Real-time footprint of MongoDB usage.
-- `POST /agent-runs`: Creates a run, persists notes, enqueues simulation.
-- `GET /agent-runs`: Lists stored runs.
-- `GET /agent-runs/{run_id}`: Returns run details and current status.
-- `GET /agent-runs/{run_id}/events`: Returns timeline events from `agent_audit_logs`.
-- `GET /tasks` & `PATCH /tasks/{task_id}/status`: Fetch and mutate operational tasks.
+*Note on MCP: operational memory reads run through the **official MongoDB MCP Server** (`mongodb-mcp-server`, spawned over stdio, always with `--readOnly`) when `MONGODB_MCP_ENABLED=true`. If the MCP server is unavailable, the agent falls back to the controlled native adapter and records the fallback in the audit trail. Writes never go through MCP.*
+
+## API Endpoints
+
+| Method  | Path                                 | Auth | Description |
+|---------|--------------------------------------|------|-------------|
+| `GET`   | `/health`                            | No   | Health probe (Cloud Run / load balancer) |
+| `POST`  | `/demo/seed`                         | Yes  | Idempotently seed synthetic demographic records |
+| `GET`   | `/mongodb/activity`                  | Yes  | Real-time MongoDB usage footprint |
+| `POST`  | `/agent-runs`                        | Yes  | Create a run, persist notes, enqueue processing |
+| `GET`   | `/agent-runs`                        | Yes  | List stored runs |
+| `GET`   | `/agent-runs/{run_id}`               | Yes  | Run details and current status |
+| `GET`   | `/agent-runs/{run_id}/events`        | Yes  | Audit timeline events |
+| `GET`   | `/agent-runs/{run_id}/mcp-tool-calls`| Yes  | MCP tool call trace |
+| `GET`   | `/tasks`                             | Yes  | List operational tasks |
+| `PATCH` | `/tasks/{task_id}/status`            | Yes  | Update task status (approve/reject) |
+| `GET`   | `/mcp/tool-calls`                    | Yes  | List all MCP tool calls |
+
+All protected endpoints require the `x-demo-access-code` header.
 
 ## Running Locally
 
-### 1. Environment Setup
-Copy `.env.example` to `.env` in the `apps/api` directory.
-- `STATE_BACKEND=mongodb`: Requires a valid `MONGODB_URI` connection string to persist tasks and audit logs.
-- `STATE_BACKEND=memory`: Uses purely mock data structures (good for offline testing, but won't trace MCP tools).
-- `GEMINI_ENABLED=true`: Requires a valid `GEMINI_API_KEY` to run the active reasoning orchestrator. Setting to `false` gracefully disables Gemini and restricts testing to `mock` mode.
+### Prerequisites
 
-### 2. Start the API
+- Python 3.11+
+- Node.js 20+ (for the frontend)
+- MongoDB Atlas account (for `mongodb` backend) or use `memory` backend for offline testing
+
+### 1. API Setup
+
 ```bash
 cd apps/api
-python3 -m venv venv
-source venv/bin/activate
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
+cp .env.example .env
+# Edit .env — set DEMO_ACCESS_CODE, and optionally MONGODB_URI / GEMINI_API_KEY
 uvicorn app.main:app --port 8000 --reload
 ```
-Test: `http://localhost:8000/health`
 
-### 3. Worker Service (Stubbed)
-The `apps/worker` directory contains a minimal stub. Currently, async tasks run via FastAPI `BackgroundTasks` directly in the API for simplicity of local demonstration.
+Verify: `curl http://localhost:8000/health`
 
-### 4. Running the Main Demo
-1. Start the API and Web.
-2. Open `http://localhost:5173`.
-3. Click "Seed Demo Data" in the top right to create baseline demographic/clinic entries.
-4. Provide a synthetic clinical note.
-5. Select "Gemini" or "Mock" mode and execute the Agent.
-6. Observe the Task Board, Audit Timeline, and Controlled MongoDB Tools Trace.
+### 2. Frontend Setup
 
-**Current Limitations:** Not deployed yet. Polling loops are localized and not optimized for production web sockets.
-
-### Frontend
 ```bash
 cd apps/web
-npm install
+npm ci
 npm run dev
 ```
-Test: `http://localhost:5173`
+
+Open: `http://localhost:5173`
+
+### 3. Seed Demo Data
+
+With the API running:
+
+```bash
+python scripts/seed_demo_data.py --access-code YOUR_CODE
+```
+
+Or via the UI: click **"Seed Demo Data"** in the top-right corner.
+
+### 4. Run the Demo
+
+1. Open `http://localhost:5173`
+2. Enter the demo access code
+3. Provide a synthetic clinical note
+4. Select **"Gemini"** or **"Deterministic"** mode and execute the Agent
+5. Observe the Task Board, Audit Timeline, and MCP Tool Trace
+
+### Environment Variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `STATE_BACKEND` | Yes | `memory` (offline) or `mongodb` (Atlas) |
+| `DEMO_ACCESS_CODE` | Yes | Access code for protected endpoints |
+| `MONGODB_URI` | If `mongodb` | MongoDB Atlas connection string |
+| `GEMINI_ENABLED` | No | `true` to enable Gemini AI extraction |
+| `GEMINI_API_KEY` | If Gemini | Google AI Studio API key |
+| `GEMINI_PRIMARY_MODEL` | If Gemini | e.g. `gemini-2.5-flash` |
+| `GEMINI_FALLBACK_MODELS` | If Gemini | e.g. `gemini-3.1-flash-lite,gemini-2.0-flash` |
+| `GEMINI_MAX_MODEL_ATTEMPTS` | Number | e.g. `3` |
+
+See [`.env.example`](.env.example) for the full list.
 
 ---
 
-## Final Submission & Live Demo
+## Live Demo
 
 **Live Demo URL:** `https://myukura-careops-web-1001238764138.europe-west1.run.app/`
 
-*Note: The demo requires a backend-enforced Access Code to unlock the UI and execute the Gemini models. Please refer to your Hackathon submission notes for the code.*
+*The demo requires a backend-enforced Access Code. Refer to your Hackathon submission notes for the code.*
 
-**Main Features:**
-*   Extraction of operational "CareOps" tasks from unstructured text and voice notes.
-*   **Live persistent operational memory** powered by MongoDB Atlas, read through the **official MongoDB MCP Server** (read-only) on every run.
-*   Resilient Gemini model chain (gemini-3.5-flash primary with automatic fallbacks, every attempt visible in the UI) plus a local mock simulator mode.
-*   Evidence Layer with system and trace transparency.
+## Key Features
 
-**Safety Boundaries:**
-*   **No Diagnosis:** The agent strictly refuses clinical requests.
-*   **Prompt-Injection Defense:** A dual-layer safety validator prevents adversarial manipulation.
-*   **Input Constraints:** Strict 6,000-character and 5-minute voice ingestion limits are enforced.
+* Extraction of operational "CareOps" tasks from unstructured text and voice notes.
+* **Live persistent operational memory** powered by MongoDB Atlas, read through the **official MongoDB MCP Server** (read-only) on every run.
+* Resilient Gemini model chain (gemini-2.5-flash primary with automatic fallbacks, every attempt visible in the UI) plus a deterministic keyword-matching extractor as fallback.
+* Evidence Layer with system and trace transparency.
 
-**Partner Integration Status:**
-*   **MongoDB (our partner track):** Live integration — operational memory, task storage, audit logs and per-call tool tracing all run on MongoDB Atlas.
-*   **Arize & Elastic (roadmap, outside our track):** the outbox pattern generates redacted payloads and the export workers are implemented, but external export is intentionally **disabled** in the public demo to avoid leaking demo traffic to third-party services.
+## Safety Boundaries
+
+* **No Diagnosis:** The agent strictly refuses clinical requests.
+* **Prompt-Injection Defense:** A dual-layer safety validator prevents adversarial manipulation.
+* **Input Constraints:** Strict 6,000-character and 5-minute voice ingestion limits are enforced.
+
+## Partner Integration Status
+
+* **MongoDB (partner track):** Live integration — operational memory, task storage, audit logs and per-call tool tracing all run on MongoDB Atlas.
+* **Arize & Elastic (roadmap):** The outbox pattern generates redacted payloads and the export workers are implemented, but external export is intentionally **disabled** in the public demo.
+
+## License
+
+[MIT](LICENSE)

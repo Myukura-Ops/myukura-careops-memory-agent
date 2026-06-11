@@ -85,18 +85,53 @@ def _parse_find_result(result: Any) -> List[Dict[str, Any]]:
         text = getattr(block, "text", None)
         if not text:
             continue
-        # The warning prose mentions the boundary tags inline, so several
-        # regex matches may exist; only the real data section parses as JSON.
-        candidates = [m.group(2) for m in _UNTRUSTED_DATA_RE.finditer(text)] or [text]
+        
+        # Robustly extract JSON by ignoring boundary tags completely and looking for a top-level array or object
         parsed = None
-        for candidate in candidates:
-            try:
-                parsed = json.loads(candidate)
-                break
-            except (json.JSONDecodeError, TypeError):
-                continue
+        # Try to find something that looks like an array or an object
+        start_idx_arr = text.find('[')
+        start_idx_obj = text.find('{')
+        
+        # Find the outermost JSON structure
+        start_idx = -1
+        if start_idx_arr != -1 and start_idx_obj != -1:
+            start_idx = min(start_idx_arr, start_idx_obj)
+        elif start_idx_arr != -1:
+            start_idx = start_idx_arr
+        elif start_idx_obj != -1:
+            start_idx = start_idx_obj
+            
+        if start_idx != -1:
+            # We found a potential JSON start. Let's find the end.
+            end_idx_arr = text.rfind(']')
+            end_idx_obj = text.rfind('}')
+            
+            end_idx = -1
+            if start_idx == start_idx_arr and end_idx_arr != -1:
+                end_idx = end_idx_arr
+            elif start_idx == start_idx_obj and end_idx_obj != -1:
+                end_idx = end_idx_obj
+                
+            if end_idx != -1 and end_idx > start_idx:
+                try:
+                    candidate = text[start_idx:end_idx+1]
+                    parsed = json.loads(candidate)
+                except json.JSONDecodeError:
+                    pass
+                    
+        # Fallback to the old regex method if the structural extraction failed
+        if parsed is None:
+            candidates = [m.group(2) for m in _UNTRUSTED_DATA_RE.finditer(text)] or [text]
+            for candidate in candidates:
+                try:
+                    parsed = json.loads(candidate)
+                    break
+                except (json.JSONDecodeError, TypeError):
+                    continue
+                    
         if parsed is None:
             continue
+            
         parsed = _from_ejson(parsed)
         if isinstance(parsed, list):
             docs.extend(d for d in parsed if isinstance(d, dict))

@@ -21,7 +21,7 @@ PHOENIX_COLLECTOR_ENDPOINT=https://app.phoenix.arize.com/v1/traces
 ## Privacy & Safety Policy
 The observability layer is bound by the same strict constraints as the MongoDB MCP Tool layer.
 **What is Safe to Trace:**
-- Model IDs (e.g., `gemini-3.5-flash`)
+- Model IDs (e.g., `gemini-2.5-flash`)
 - Latency (ms)
 - Status (`success`, `failed`, `timeout`, `invalid_json`)
 - Block counts (e.g., "Safety Blocked: 2")

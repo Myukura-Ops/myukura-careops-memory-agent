@@ -9,16 +9,16 @@ def get_agent_runs_repo():
         from app.repositories import in_memory_agent_runs
         return in_memory_agent_runs
 
-# Source notes and tasks don't have in-memory versions in Phase 1, 
-# so if we are in memory mode, they just won't be saved or we can mock them.
-# For simplicity, if backend is memory, we return a mock object.
-class MockRepo:
+# Source notes and tasks use MongoDB in production. When STATE_BACKEND=memory,
+# an in-memory fallback is used for local development and offline testing.
+class InMemoryFallbackRepo:
     def __init__(self):
         self._tasks = {}
         self._notes = {}
 
     async def create_source_note(self, note):
-        self._notes[note.id if hasattr(note, 'id') else note['id']] = note
+        key = getattr(note, 'note_id', None) or note.get('note_id') if isinstance(note, dict) else getattr(note, 'id', None)
+        self._notes[key] = note
         return note
 
     async def get_source_note(self, note_id): 
@@ -47,13 +47,13 @@ class MockRepo:
             return self._tasks[task_id]
         return None
 
-_mock_repo_instance = MockRepo()
+_in_memory_fallback_instance = InMemoryFallbackRepo()
     
 def get_source_notes_repo():
     if settings.state_backend == "mongodb":
         from app.repositories import mongodb_source_notes
         return mongodb_source_notes
-    return _mock_repo_instance
+    return _in_memory_fallback_instance
 
 def get_tasks_repo():
     if settings.state_backend == "mongodb":

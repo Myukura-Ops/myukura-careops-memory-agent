@@ -11,7 +11,7 @@ from app.models.agent_run import (
 )
 from app.models.notes import SourceNote
 from app.repositories.repository_factory import get_agent_runs_repo, get_source_notes_repo, get_mcp_tool_calls_repo
-from app.services import mock_queue
+from app.services import task_queue
 
 router = APIRouter(prefix="/agent-runs", tags=["agent-runs"])
 
@@ -58,14 +58,14 @@ async def create_agent_run(request: AgentRunCreateRequest, background_tasks: Bac
         execution_mode=request.mode,
         state_backend=settings.state_backend,
         queue={
-            "provider": "mock_queue" if request.mode == "mock" else "gemini_queue",
+            "provider": "background_queue",
             "task_name": f"run-{run_id}",
             "attempt": 1
         },
         worker={
             "mode": "api_background_simulation",
             "service": "careops-api",
-            "orchestrator": "gemini_orchestrator" if request.mode == "gemini" else "mock_orchestrator"
+            "orchestrator": "gemini_orchestrator" if request.mode == "gemini" else "deterministic_orchestrator"
         },
         model_chain=[],
         tools_called=[],
@@ -88,15 +88,15 @@ async def create_agent_run(request: AgentRunCreateRequest, background_tasks: Bac
         event_id=str(uuid.uuid4()),
         run_id=run_id,
         event_type="AGENT_RUN_CREATED",
-        message="Agent run has been queued for simulated processing.",
+        message="Agent run has been queued for processing.",
         timestamp=now,
         human_visible=True,
         metadata={"phase": "2A"}
     )
     await repo.add_event(run_id, event)
     
-    # Enqueue mock processing
-    mock_queue.enqueue_agent_run(run_id, background_tasks)
+    # Enqueue background processing
+    task_queue.enqueue_agent_run(run_id, background_tasks)
     
     return AgentRunResponse(
         run_id=run_id,
@@ -126,6 +126,22 @@ async def get_agent_run(run_id: str):
                 "status": "failed"
             }
         )
+    
+    # Dynamically resolve partner outbox statuses
+    if run.result and "partner_integrations" in run.result:
+        try:
+            from app.repositories.repository_factory import get_partner_outbox_repo
+            outbox_repo = get_partner_outbox_repo()
+            outbox_items = await outbox_repo.get_partner_outbox_by_run(run_id)
+            for item in outbox_items:
+                partner = item.partner
+                if partner in run.result["partner_integrations"]:
+                    run.result["partner_integrations"][partner]["status"] = (
+                        "outbox_ready" if item.status == "pending" else f"outbox_{item.status}"
+                    )
+        except Exception:
+            pass
+            
     return run
 
 @router.get("/{run_id}/model-chain")

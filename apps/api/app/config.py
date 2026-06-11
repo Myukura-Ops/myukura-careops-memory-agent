@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     log_source_note_content: bool = False
     trace_source_note_content: bool = False
     state_backend: str = "memory"
-    mongodb_uri: str = "PHASE_2_PLACEHOLDER"
+    mongodb_uri: str = ""
     mongodb_database: str = "myukura_careops_demo"
     mongodb_connect_timeout_ms: int = 5000
     mongodb_app_name: str = "myukura-careops-memory-agent"
@@ -31,14 +31,14 @@ class Settings(BaseSettings):
     # Gemini
     gemini_enabled: bool = False
     gemini_provider: str = "developer_api"
-    gemini_api_key: str = "PHASE_3_PLACEHOLDER"
+    gemini_api_key: str = ""
     gemini_primary_model: str = "GEMINI_MODEL_NOT_CONFIGURED"
     gemini_fallback_models: str = ""
     gemini_request_timeout_seconds: int = 20
     gemini_max_model_attempts: int = 3
     gemini_timeout_seconds: int = 30
     gemini_max_retries: int = 2
-    google_cloud_project: str = "PHASE_3_PLACEHOLDER"
+    google_cloud_project: str = ""
     google_cloud_location: str = "us-central1"
     
     # Observability

@@ -1,16 +1,23 @@
 # Python
 __pycache__/
 *.py[cod]
+*.pyo
 venv/
+.venv/
 .env
 .env.*
 !.env.example
+
+# Per-app env files
 apps/api/.env
 apps/api/.env.*
 !apps/api/.env.example
 apps/web/.env
 apps/web/.env.*
 !apps/web/.env.example
+apps/worker/.env
+apps/worker/.env.*
+!apps/worker/.env.example
 
 # Node
 node_modules/
@@ -18,9 +25,15 @@ dist/
 
 # OS
 .DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
 
 # Logs
 *.log
 
-.venv/
+# Agent / AI tooling
 .claude/
+.gemini/
