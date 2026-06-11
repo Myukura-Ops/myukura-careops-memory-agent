@@ -15,8 +15,8 @@ A supervised operational memory agent for clinical teams that converts approved 
 
 ## Roadmap & Future Phases
 - **Phase 1-4D**: Completed (Local FastAPI, React, MongoDB, Gemini Orchestrator, Safety Verifier, MCP Adapter, Observability Hooks).
-- **Phase 5**: Cloud Run deployment + Devpost packaging.
-- **Future**: Dedicated Worker service, Cloud Tasks, and Official MongoDB MCP integration.
+- **Phase 5**: Completed (Cloud Run deployment, official MongoDB MCP Server integration for memory reads, partner export workers, Devpost packaging).
+- **Future**: Dedicated Worker service, Cloud Tasks, EHR/FHIR integration path.
 
 ## Target Architecture
 - **Frontend**: React + Vite + TypeScript
@@ -24,7 +24,7 @@ A supervised operational memory agent for clinical teams that converts approved 
 - **Worker**: FastAPI (Stubbed for future Cloud Tasks integration)
 - **State/Memory**: MongoDB Atlas (`agent_runs`, `careops_tasks`, `mcp_tool_calls`, etc. - our core operational layer)
 - **Agent**: Gemini Model Chain with Structured Extraction and Fallbacks
-- **Tools**: Controlled MongoDB Tool Adapter layer (MCP-compatible contracts)
+- **Tools**: Official MongoDB MCP Server (read-only, operational memory reads) + Controlled MongoDB Tool Adapter layer (scoped writes, MCP-style contracts, full per-call audit logging)
 - **Observability**: Optional Arize Phoenix hooks & Dynatrace target integration (Safe, no PHI logged)
 
 ## Sensitive Data Guardrails
@@ -35,7 +35,7 @@ This project employs a sensitive-data-ready architecture:
 - **Future Hardening**: We have documented a roadmap integration path for Google Cloud Sensitive Data Protection (DLP) for automated pre-persistence inspection.
 - **Disclaimer**: This demo makes no compliance claims and is not certified for HIPAA/GDPR compliance. It demonstrates a safety-oriented baseline architecture.
 
-*Note on MCP: the agent's MongoDB tools are exposed through a controlled tool adapter that follows MCP-style tool contracts (named tools, structured inputs, full per-call audit logging in the `mcp_tool_calls` collection). For the public healthcare demo the adapter enforces strict scoping on every read/write instead of exposing raw database access; our evaluation of the official MongoDB MCP Server (read-only mode) is documented in `docs/OFFICIAL_MONGODB_MCP_READONLY_NOTES.md`.*
+*Note on MCP: operational memory reads run through the **official MongoDB MCP Server** (`mongodb-mcp-server`, spawned over stdio, always with `--readOnly`) when `MONGODB_MCP_ENABLED=true`. If the MCP server is unavailable, the agent falls back to the controlled native adapter and records the fallback in the audit trail. Writes never go through MCP: they stay in the controlled tool adapter, which enforces strict clinical-safety scoping and logs every call in the `mcp_tool_calls` collection. Background notes in `docs/OFFICIAL_MONGODB_MCP_READONLY_NOTES.md`.*
 
 ## API Endpoints (Phase 2A)
 - `POST /demo/seed`: Idempotently seeds synthetic demographic records.
@@ -95,7 +95,7 @@ Test: `http://localhost:5173`
 
 **Main Features:**
 *   Extraction of operational "CareOps" tasks from unstructured text and voice notes.
-*   **Live persistent operational memory** powered by MongoDB Atlas.
+*   **Live persistent operational memory** powered by MongoDB Atlas, read through the **official MongoDB MCP Server** (read-only) on every run.
 *   Resilient Gemini model chain (gemini-3.5-flash primary with automatic fallbacks, every attempt visible in the UI) plus a local mock simulator mode.
 *   Evidence Layer with system and trace transparency.
 

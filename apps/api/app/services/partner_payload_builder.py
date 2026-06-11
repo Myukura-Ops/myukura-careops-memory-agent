@@ -29,6 +29,7 @@ def build_arize_observability_payload(
         "prompt_injection_detected": any("prompt_injection" in flag for flag in result.get("safety_flags", [])),
         "memory_found": result.get("memory_found", False),
         "memory_items_count": result.get("memory_items_count", 0),
+        "memory_source": result.get("memory_source", "native_adapter"),
         "task_count": len(tasks),
         "human_review_required": True,
         "validator_status": result.get("safety_status", "unknown"),

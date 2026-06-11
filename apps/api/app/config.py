@@ -72,6 +72,14 @@ class Settings(BaseSettings):
     elastic_mcp_enabled: bool = False
     elastic_endpoint: Optional[str] = None
     elastic_api_key: Optional[str] = None
+    elastic_index: str = "myukura-careops-audit"
+
+    # Official MongoDB MCP Server (read-only memory reads)
+    mongodb_mcp_enabled: bool = False
+    mongodb_mcp_command: str = "npx"
+    mongodb_mcp_args: str = "-y,mongodb-mcp-server@latest,--readOnly"
+    mongodb_mcp_startup_timeout_seconds: int = 20
+    mongodb_mcp_call_timeout_seconds: int = 10
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

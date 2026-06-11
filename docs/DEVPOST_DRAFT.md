@@ -10,22 +10,22 @@ A secure, memory-augmented AI agent that extracts operational and administrative
 In modern healthcare, clinical visits generate a massive amount of unstructured data. While doctors focus on clinical care, the administrative and operational tasks—scheduling follow-ups, verifying insurance, organizing referrals—often fall through the cracks. These dropped "CareOps" tasks lead to poor patient experiences and lost clinic revenue. We realized that AI shouldn't just be used for medical diagnosis; it's desperately needed for safe, efficient administrative operations.
 
 ## 4. What it does
-The MyuKura CareOps Memory Agent acts as a secure, automated administrative assistant. It ingests synthetic post-visit notes (via text or voice) and uses Google Gemini 1.5 Flash to extract structured operational tasks. Crucially, the agent possesses persistent operational memory. When a returning patient's note is processed, the agent queries MongoDB Atlas for past operational context (e.g., language preferences, pending billing issues) and injects it into the AI's prompt, ensuring continuity of care operations across isolated visits.
+The MyuKura CareOps Memory Agent acts as a secure, automated administrative assistant. It ingests synthetic post-visit notes (via text or voice) and uses Google Gemini (gemini-3.5-flash with an automatic fallback chain) to extract structured operational tasks. Crucially, the agent possesses persistent operational memory. When a returning patient's note is processed, the agent reads past operational context (e.g., language preferences, pending billing issues) from MongoDB Atlas **through the official MongoDB MCP Server (read-only)** and injects it into the AI's prompt, ensuring continuity of care operations across isolated visits.
 
 ## 5. How we built it
-We built a decoupled architecture on Google Cloud. The frontend is a React application served via Cloud Run. The backend is a FastAPI Python service, also deployed on Cloud Run, which orchestrates the AI logic. We integrated Google Secret Manager to securely handle API keys and access codes. To handle the AI processing, we utilized Google's `google-genai` SDK to interface with Gemini 1.5 Flash.
+We built a decoupled architecture on Google Cloud. The frontend is a React application served via Cloud Run. The backend is a FastAPI Python service, also deployed on Cloud Run, which orchestrates the AI logic. We integrated Google Secret Manager to securely handle API keys and access codes. AI processing uses Google's `google-genai` SDK with a resilient model chain (gemini-3.5-flash primary, automatic fallbacks, every attempt surfaced in the UI). Operational memory reads run through the official MongoDB MCP Server, spawned over stdio in read-only mode inside the API container, with an audited fallback to our controlled native adapter.
 
 ## 6. Partner Technologies Used
-*   **Google Cloud:** Cloud Run, Secret Manager, Gemini API
-*   **MongoDB:** Live persistent operational memory
-*   **Arize:** AI Observability (Outbox integrated)
-*   **Elastic:** Audit Search (Outbox integrated)
+*   **Google Cloud:** Cloud Run, Cloud Build, Artifact Registry, Secret Manager, Gemini API
+*   **MongoDB (our partner track):** Official MongoDB MCP Server (read-only memory reads) + MongoDB Atlas as live persistent operational memory, task storage and audit trail
+*   **Arize (roadmap):** AI observability layer — outbox pattern with an implemented export worker, external export disabled in the public demo
+*   **Elastic (roadmap):** Audit-search layer — outbox pattern with an implemented indexing worker, external indexing disabled in the public demo
 
 ## 7. Google Cloud Architecture
 Our system relies entirely on Google Cloud infrastructure. The React web app and FastAPI backend are containerized and deployed to Cloud Run in `europe-west1`. We strictly enforce security by keeping our Gemini API keys and Demo Access Codes locked inside Google Cloud Secret Manager, ensuring our Cloud Run service accounts only access what they need.
 
 ## 8. MongoDB Architecture
-MongoDB Atlas serves as the backbone of our agent's state. It provides **live persistent operational memory**. We store all agent runs, extracted tasks, and source notes in MongoDB. Before Gemini processes a new note, our repository layer queries MongoDB for the patient's recent operational tasks, building a temporal context window that allows the AI to "remember" past administrative requirements.
+MongoDB Atlas serves as the backbone of our agent's state. It provides **live persistent operational memory**. We store all agent runs, extracted tasks, source notes, partner outbox items and audit logs in MongoDB. Before Gemini processes a new note, the agent reads the patient's recent operational tasks and facts **through the official MongoDB MCP Server** — spawned over stdio with `--readOnly` enforced — building a temporal context window that allows the AI to "remember" past administrative requirements. Writes go through a controlled tool adapter with strict scoping and full per-call audit logging; if the MCP server is ever unavailable, the agent falls back to the native adapter and records the fallback in the audit timeline.
 
 ## 9. Arize/Elastic Partner Layer
 Enterprise healthcare requires deep observability. However, synchronous third-party API calls in the critical path can cause failures. We designed a robust "Partner Outbox" pattern in MongoDB. 
@@ -49,11 +49,11 @@ We successfully proved that AI can safely automate administrative healthcare ope
 We learned the critical importance of AI safety guardrails and input sanitization. We also learned how to leverage Google Secret Manager effectively within a Cloud Run environment to ensure our public demo remained secure from unauthorized API usage.
 
 ## 14. What is next
-In the future, we plan to fully enable the Arize and Elastic outbox workers for real-time external observability. We also aim to expand the agent's capabilities to integrate directly with EHR systems via FHIR APIs, moving from proposing tasks to actively assisting in their completion.
+The Arize and Elastic export workers are implemented and tested; next we plan to connect them to live Arize and Elastic Cloud instances for real-time external observability. We also aim to expand the agent's capabilities to integrate directly with EHR systems via FHIR APIs, moving from proposing tasks to actively assisting in their completion.
 
 ## 15. Demo Instructions
 Our live demo is publicly accessible but protected by an access gate.
-URL: `[INSERT_LIVE_URL]`
+URL: `https://myukura-careops-web-1001238764138.europe-west1.run.app/`
 *Reviewers: Please refer to your submission materials or contact us for the secure `DEMO_ACCESS_CODE`.*
 
 ## 16. Security/Privacy Note

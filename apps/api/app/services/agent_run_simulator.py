@@ -236,7 +236,10 @@ async def simulate_agent_run(run_id: str):
     memory_ctx = await build_memory_context(run.patient_id, run.professional_id, run.clinic_id, run_id)
     
     if memory_ctx.get("memory_found"):
-        await _transition_and_log(run_id, repo, AgentRunStatus.processing, "MEMORY_CONTEXT_FOUND", memory_ctx.get("summary", "Memory found."))
+        memory_summary = memory_ctx.get("summary", "Memory found.")
+        if memory_ctx.get("memory_source") == "official_mongodb_mcp_server":
+            memory_summary += " Read through the official MongoDB MCP Server (read-only)."
+        await _transition_and_log(run_id, repo, AgentRunStatus.processing, "MEMORY_CONTEXT_FOUND", memory_summary)
     else:
         if memory_ctx.get("error"):
             await _transition_and_log(run_id, repo, AgentRunStatus.processing, "MEMORY_CONTEXT_LOOKUP_FAILED", "Failed to build memory context, proceeding without it.")
@@ -271,6 +274,7 @@ async def simulate_agent_run(run_id: str):
         run.result["operational_signals_detected"] = signals_detected
         run.result["memory_context_used"] = memory_ctx.get("items", [])
         run.result["memory_found"] = memory_ctx.get("memory_found", False)
+        run.result["memory_source"] = memory_ctx.get("memory_source", "native_adapter")
         run.result["memory_context_error"] = memory_ctx.get("error")
         run.result["memory_items_count"] = len(memory_ctx.get("items", []))
         run.result["memory_context_limited_to"] = 10
@@ -335,6 +339,7 @@ async def simulate_agent_run(run_id: str):
             run.result["tasks_created"] = len(task_ids)
             run.result["memory_context_used"] = memory_ctx.get("items", [])
             run.result["memory_found"] = memory_ctx.get("memory_found", False)
+            run.result["memory_source"] = memory_ctx.get("memory_source", "native_adapter")
             run.result["memory_context_error"] = memory_ctx.get("error")
             run.result["memory_items_count"] = len(memory_ctx.get("items", []))
             run.result["memory_context_limited_to"] = 10
@@ -365,6 +370,7 @@ async def simulate_agent_run(run_id: str):
             run.result["memory_facts"] = [m.fact_type for m in validated_result.memory_facts]
             run.result["memory_context_used"] = memory_ctx.get("items", [])
             run.result["memory_found"] = memory_ctx.get("memory_found", False)
+            run.result["memory_source"] = memory_ctx.get("memory_source", "native_adapter")
             run.result["memory_context_error"] = memory_ctx.get("error")
             run.result["memory_items_count"] = len(memory_ctx.get("items", []))
             run.result["memory_context_limited_to"] = 10
